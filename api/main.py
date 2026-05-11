@@ -3,6 +3,7 @@
 # Lab 3 - Integration de Modeles IA - ESP/UCAD
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
@@ -31,7 +32,16 @@ app = FastAPI(
     version="0.2.0"
 )
 
-# --- Chargement du modele (une seule fois) ---
+# --- CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Chargement du modele ---
 print("Chargement du modele...")
 model = joblib.load("models/model.pkl")
 le_sexe = joblib.load("models/encoder_sexe.pkl")
@@ -46,7 +56,6 @@ def health_check():
 
 @app.get("/model-info")
 def model_info():
-    """Informations sur le modèle chargé."""
     return {
         "type": type(model).__name__,
         "nombre_arbres": model.n_estimators,
@@ -54,10 +63,8 @@ def model_info():
         "nombre_features": model.n_features_in_
     }
 
-
 @app.post("/predict", response_model=DiagnosticOutput)
 def predict(patient: PatientInput):
-    # Encoder
     try:
         sexe_enc = le_sexe.transform([patient.sexe])[0]
     except ValueError:
@@ -73,7 +80,6 @@ def predict(patient: PatientInput):
             confiance="aucune",
             message=f"Region inconnue : {patient.region}")
 
-    # Features
     features = np.array([[
         patient.age, sexe_enc, patient.temperature,
         patient.tension_sys, int(patient.toux),
@@ -81,7 +87,6 @@ def predict(patient: PatientInput):
         region_enc
     ]])
 
-    # Prediction
     diagnostic = model.predict(features)[0]
     proba_max = float(model.predict_proba(features)[0].max())
     confiance = ("haute" if proba_max >= 0.7
