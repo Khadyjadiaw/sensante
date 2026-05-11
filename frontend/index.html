@@ -110,6 +110,27 @@
       </div>
 
     </div>
+
+    <!-- Exercice 2 : Historique des consultations -->
+    <div id="historique-section" class="mt-8" style="display:none"></div>
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Historique des consultations</h2>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200">
+              <th class="text-left py-2 text-gray-600">#</th>
+              <th class="text-left py-2 text-gray-600">Age</th>
+              <th class="text-left py-2 text-gray-600">Region</th>
+              <th class="text-left py-2 text-gray-600">Diagnostic</th>
+              <th class="text-left py-2 text-gray-600">Probabilite</th>
+            </tr>
+          </thead>
+          <tbody id="historique-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 
   <!-- Footer -->
@@ -119,6 +140,7 @@
 
   <script>
     const API_URL = "http://localhost:8000";
+    const historique = [];
 
     async function diagnostiquer() {
       const patient = {
@@ -153,10 +175,44 @@
 
         const resultat = await response.json();
         afficherResultat(resultat);
+        ajouterHistorique(patient, resultat);
 
       } catch (error) {
         afficherErreur("Erreur de connexion : " + error.message);
       }
+    }
+
+    function ajouterHistorique(patient, resultat) {
+      const icones = {
+        paludisme: "🦟", grippe: "🤧", typhoide: "🤒", sain: "💚",
+        palu: "🦟", typh: "🤒"
+      };
+
+      historique.unshift({
+        age: patient.age,
+        region: patient.region,
+        diagnostic: resultat.diagnostic,
+        probabilite: Math.round(resultat.probabilite * 100),
+        icone: icones[resultat.diagnostic] || "🏥"
+      });
+
+      // Garder seulement les 5 derniers
+      if (historique.length > 5) historique.pop();
+
+      // Afficher le tableau
+      const section = document.getElementById("historique-section");
+      section.classList.remove("hidden");
+
+      const tbody = document.getElementById("historique-body");
+      tbody.innerHTML = historique.map((h, i) => `
+        <tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 text-gray-400">${i + 1}</td>
+          <td class="py-2 text-gray-700">${h.age} ans</td>
+          <td class="py-2 text-gray-700">${h.region}</td>
+          <td class="py-2 font-medium">${h.icone} ${h.diagnostic}</td>
+          <td class="py-2 text-gray-700">${h.probabilite}%</td>
+        </tr>
+      `).join("");
     }
 
     function afficherChargement() {
@@ -170,14 +226,22 @@
 
     function afficherResultat(r) {
       const couleurs = {
-        palu:   { bg: "bg-red-100",    text: "text-red-800",    bar: "bg-red-500",    badge: "bg-red-500" },
-        grippe: { bg: "bg-orange-100", text: "text-orange-800", bar: "bg-orange-500", badge: "bg-orange-500" },
-        typh:   { bg: "bg-yellow-100", text: "text-yellow-800", bar: "bg-yellow-500", badge: "bg-yellow-500" },
-        sain:   { bg: "bg-green-100",  text: "text-green-800",  bar: "bg-green-500",  badge: "bg-green-500" }
+        palu:      { bg: "bg-red-100",    text: "text-red-800",    bar: "bg-red-500",    badge: "bg-red-500" },
+        grippe:    { bg: "bg-orange-100", text: "text-orange-800", bar: "bg-orange-500", badge: "bg-orange-500" },
+        typh:      { bg: "bg-yellow-100", text: "text-yellow-800", bar: "bg-yellow-500", badge: "bg-yellow-500" },
+        sain:      { bg: "bg-green-100",  text: "text-green-800",  bar: "bg-green-500",  badge: "bg-green-500" },
+        paludisme: { bg: "bg-red-100",    text: "text-red-800",    bar: "bg-red-500",    badge: "bg-red-500" },
+        typhoide:  { bg: "bg-yellow-100", text: "text-yellow-800", bar: "bg-yellow-500", badge: "bg-yellow-500" }
+      };
+
+      const icones = {
+        paludisme: "🦟", grippe: "🤧", typhoide: "🤒", sain: "💚",
+        palu: "🦟", typh: "🤒"
       };
 
       const c = couleurs[r.diagnostic] || couleurs["sain"];
       const pct = Math.round(r.probabilite * 100);
+      const icone = icones[r.diagnostic] || "🏥";
       const section = document.getElementById("result-section");
 
       section.innerHTML = `
@@ -185,7 +249,7 @@
           <h2 class="text-xl font-bold text-gray-800 mb-4">Resultat</h2>
           <div class="${c.bg} rounded-lg p-4 mb-4">
             <p class="text-sm text-gray-600">Diagnostic :</p>
-            <p class="text-2xl font-bold ${c.text} uppercase mt-1">${r.diagnostic}</p>
+            <p class="text-2xl font-bold ${c.text} uppercase mt-1">${icone} ${r.diagnostic}</p>
           </div>
           <div class="mb-4">
             <div class="flex justify-between mb-1">
